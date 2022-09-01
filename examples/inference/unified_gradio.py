@@ -88,6 +88,9 @@ class StableDiffusionUnifiedPipeline(DiffusionPipeline):
         if strength < 0 or strength > 1:
             raise ValueError(f"The value of strength should in [0.0, 1.0] but is {strength}")
 
+        if height % 8 != 0 or width % 8 != 0:
+            raise ValueError(f"`height` and `width` have to be divisible by 8 but are {height} and {width}.")
+
         # set timesteps
         accepts_offset = "offset" in set(inspect.signature(self.scheduler.set_timesteps).parameters.keys())
         extra_set_kwargs = {}
@@ -136,8 +139,10 @@ class StableDiffusionUnifiedPipeline(DiffusionPipeline):
                 generator=generator,
                 device=self.device,
             )
-            init_latents_noised = init_latents * (mask) + rand_latents * (1 - mask)
-            init_latents = init_latents * (1 - strength) + init_latents_noised * strength
+
+            if mask_image is not None:
+                init_latents_noised = init_latents * (mask) + rand_latents * (1 - mask)
+                init_latents = init_latents * (1 - strength) + init_latents_noised * strength
 
             init_latents = 0.18215 * init_latents
             init_latents_orig = init_latents
@@ -261,6 +266,7 @@ def run(
             strength=strength,
             guidance_scale=guidance_scale,
             num_inference_steps=nb_steps,
+            nsfw_filter=True,
         )["sample"]
 
         return images[0]
